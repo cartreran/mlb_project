@@ -22,6 +22,9 @@ jobs:
           Rscript -e 'install.packages(c("dplyr", "ggplot2", "httr", "jsonlite", "readr", "stringr"), repos="https://cran.rstudio.com")'
           Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) install.packages("pak", repos="https://cran.rstudio.com"); pak::pak("BillPetti/baseballr")'
 
+      - name: Install tidyverse
+        run: Rscript -e 'install.packages("tidyverse", repos="https://cloud.r-project.org")'
+        
       - name: Run MLB Script
         run: Rscript R/script.r
         env:
