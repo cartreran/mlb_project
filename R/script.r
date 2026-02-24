@@ -60,6 +60,10 @@ one_data <- statcast_search(
         )
     )
 
+if (nrow(one_data) == 0) {
+    stop("No MLB data available for date: ", date)
+}
+
 best_player <- one_data %>%
     group_by(player_name, batter) %>%
     summarise(
