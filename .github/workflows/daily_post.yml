@@ -2,8 +2,10 @@ name: MLB Daily ΔxR Bot
 
 on:
   schedule:
+    # Every 5 minutes
     - cron: "*/5 * * * *"
-    # 14:30 UTC daily (adjust if needed)
+    # Daily at 14:30 UTC (uncomment if needed)
+    # - cron: "30 14 * * *"
   workflow_dispatch:
 
 jobs:
@@ -14,12 +16,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup R
+      - name: Set up system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libxml2-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev
+
+      - name: Set up R
         uses: r-lib/actions/setup-r@v2
 
       - name: Install pak (R package manager)
-        run: |
-          Rscript -e 'install.packages("pak", repos = "https://cran.rstudio.com")'
+        run: Rscript -e 'install.packages("pak", repos = "https://cran.rstudio.com")'
 
       - name: Cache R packages
         uses: actions/cache@v3
@@ -28,29 +39,21 @@ jobs:
           key: ${{ runner.os }}-r-${{ hashFiles('**/*.R') }}
           restore-keys: |
             ${{ runner.os }}-r-
-            
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev \
-            libfontconfig1-dev libfreetype6-dev
 
       - name: Write dependencies.lock (auto-lock resolution)
         run: |
           Rscript -e '
-          pkgs <- c("dplyr", "ggplot2", "httr", "jsonlite", "readr", "stringr")
-          # baseballr is installed from GitHub if not found on CRAN
-          if (!requireNamespace("baseballr", quietly = TRUE)) {
-            pak::pak("BillPetti/baseballr")
-          } else {
-            pkgs <- c(pkgs, "baseballr")
-          }
-          pak::lockfile_create(pkgs, lockfile = ".github/pkg.lock")
+            pkgs <- c("dplyr", "ggplot2", "httr", "jsonlite", "readr", "stringr")
+            if (!requireNamespace("baseballr", quietly = TRUE)) {
+              pak::pak("BillPetti/baseballr")
+            } else {
+              pkgs <- c(pkgs, "baseballr")
+            }
+            pak::lockfile_create(pkgs, lockfile = ".github/pkg.lock")
           '
 
       - name: Install R package dependencies from lockfile
-        run: |
-          Rscript -e 'pak::pkg_install(lockfile = ".github/pkg.lock")'
+        run: Rscript -e 'pak::pkg_install(lockfile = ".github/pkg.lock")'
 
       - name: Run MLB Bot Script
         run: Rscript R/script.r
