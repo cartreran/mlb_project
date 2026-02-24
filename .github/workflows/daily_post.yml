@@ -1,61 +1,25 @@
-name: MLB Daily ΔxR Bot
+name: Run MLB Project Script
 
 on:
-  schedule:
-    # Every 5 minutes
-    - cron: "*/5 * * * *"
-    # Daily at 14:30 UTC (uncomment if needed)
-    # - cron: "30 14 * * *"
   workflow_dispatch:
 
 jobs:
-  post:
+  run-mlb-script:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libcurl4-openssl-dev \
-            libssl-dev \
-            libxml2-dev \
-            libfontconfig1-dev \
-            libfreetype6-dev
-
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
 
-      - name: Install pak (R package manager)
-        run: Rscript -e 'install.packages("pak", repos = "https://cran.rstudio.com")'
-
-      - name: Cache R packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/R
-          key: ${{ runner.os }}-r-${{ hashFiles('**/*.R') }}
-          restore-keys: |
-            ${{ runner.os }}-r-
-
-      - name: Write dependencies.lock (auto-lock resolution)
+      - name: Install R Packages
         run: |
-          Rscript -e '
-            pkgs <- c("dplyr", "ggplot2", "httr", "jsonlite", "readr", "stringr")
-            if (!requireNamespace("baseballr", quietly = TRUE)) {
-              pak::pak("BillPetti/baseballr")
-            } else {
-              pkgs <- c(pkgs, "baseballr")
-            }
-            pak::lockfile_create(pkgs, lockfile = ".github/pkg.lock")
-          '
+          Rscript -e 'install.packages(c("dplyr", "ggplot2", "httr", "jsonlite", "readr", "stringr"), repos="https://cran.rstudio.com")'
+          Rscript -e 'pak::pak("BillPetti/baseballr")'
 
-      - name: Install R package dependencies from lockfile
-        run: Rscript -e 'pak::pkg_install(".github/pkg.lock")'
-
-      - name: Run MLB Bot Script
+      - name: Run MLB Script
         run: Rscript R/script.r
         env:
           apikey: ${{ secrets.apikey }}
