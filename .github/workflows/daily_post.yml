@@ -53,7 +53,7 @@ jobs:
           '
 
       - name: Install R package dependencies from lockfile
-        run: Rscript -e 'pak::pkg_install(lockfile = ".github/pkg.lock")'
+        run: Rscript -e 'pak::pkg_install(".github/pkg.lock")'
 
       - name: Run MLB Bot Script
         run: Rscript R/script.r
