@@ -26,21 +26,16 @@ jobs:
             ${{ runner.os }}-r-
 
       - name: Install required packages
-        run: |
-          install.packages(c(
-            "dplyr",
-            "tidyverse",
-            "ggplot2",
-            "httr",
-            "jsonlite",
-            "readr",
-            "stringr"
-          ), repos = "https://cloud.r-project.org")
-          if (!requireNamespace("remotes", quietly = TRUE)) {
-            install.packages("remotes", repos = "https://cloud.r-project.org")
-          }
-          remotes::install_github("BillPetti/baseballr")
-        shell: Rscript {0}
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+         packages: |
+            dplyr
+            baseballr
+            ggplot2
+            httr
+            jsonlite
+            readr
+            stringr
 
       - name: Run MLB Bot Script
         run: Rscript R/script.r
