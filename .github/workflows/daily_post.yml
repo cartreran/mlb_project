@@ -24,7 +24,11 @@ jobs:
           key: ${{ runner.os }}-r-${{ hashFiles('**/*.R') }}
           restore-keys: |
             ${{ runner.os }}-r-
-
+      - name: Install system dependencies
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev \
+            libfontconfig1-dev libfreetype6-dev
       - name: Install required packages
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
