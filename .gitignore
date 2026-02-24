@@ -1,6 +1,5 @@
 # macOS
 .DS_Store
-
 # Python
 __pycache__/
 *.py[cod]
@@ -17,16 +16,14 @@ env/
 .env
 pip-wheel-metadata/
 .cache/
-
 # Jupyter
 .ipynb_checkpoints/
-
 # Logs
 *.log
-
 # IDEs
 .vscode/
 .idea/
-
 # OS
 Thumbs.db
+.Renviorn
+.httr-oauth

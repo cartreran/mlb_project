@@ -32,9 +32,9 @@ data1 <- data %>%
 re_matrix <- data1 %>%
     group_by(base_pos, outs_when_up) %>%
     summarise(
-        avg_runs = sum(runs) / n()
-    ) %>%
-    ungroup()
+        avg_runs = mean(runs, na.rm = TRUE),
+)
+write_csv(re_matrix, file.path("data", "xR_matrix.csv"))
 labels <- c(
     "0" = "Bases Empty",
     "1" = "Runner on 1st",
