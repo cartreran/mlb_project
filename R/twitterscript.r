@@ -6,7 +6,7 @@ library(httr)
 library(jsonlite)
 
 
-date <- format(Sys.Date() - 2, "%Y-%m-%d")
+date <- format(Sys.Date() - 1, "%Y-%m-%d")
 xR_matrix <- read_csv(file.path("data", "xR_matrix.csv"))
 
 one_data <- statcast_search(
@@ -128,7 +128,7 @@ tweet_text <- paste0(
 
 cat(tweet_text)
 
-player_photo <- paste0("https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/", best_player$batter, "/headshot/67/current")
+# player_photo <- paste0("https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/", best_player$batter, "/headshot/67/current")
 
 tweet_text <- stringr::str_trim(tweet_text)
 if (nchar(tweet_text) > 280) {
