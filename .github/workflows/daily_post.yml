@@ -25,7 +25,7 @@ jobs:
           Rscript -e 'if (!requireNamespace("pak", quietly = TRUE)) install.packages("pak", repos="https://cran.rstudio.com"); pak::pak("BillPetti/baseballr")'
 
       - name: Run MLB Script
-        run: Rscript R/script.r
+        run: Rscript R/twitterscript.r
         env:
           apikey: ${{ secrets.apikey }}
           apikeysecret: ${{ secrets.apikeysecret }}
