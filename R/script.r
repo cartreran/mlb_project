@@ -80,15 +80,15 @@ best_play <- all_best_player_plays %>%
     arrange(desc(delta_xR)) %>%
     slice_head(n = 1)
 base_state_desc <- dplyr::case_when(
-    best_play$base_pos == 0 ~ "bases empty",
-    best_play$base_pos == 1 ~ "runner on 1st",
-    best_play$base_pos == 10 ~ "runner on 2nd",
-    best_play$base_pos == 11 ~ "runners on 1st and 2nd",
-    best_play$base_pos == 100 ~ "runner on 3rd",
-    best_play$base_pos == 101 ~ "runners on 1st and 3rd",
-    best_play$base_pos == 110 ~ "runners on 2nd and 3rd",
-    best_play$base_pos == 111 ~ "bases loaded",
-    TRUE ~ "unknown base state"
+    best_play$base_pos == 0 ~ "Bases empty",
+    best_play$base_pos == 1 ~ "Runner on 1st",
+    best_play$base_pos == 10 ~ "Runner on 2nd",
+    best_play$base_pos == 11 ~ "Runners on 1st and 2nd",
+    best_play$base_pos == 100 ~ "Runner on 3rd",
+    best_play$base_pos == 101 ~ "Runners on 1st and 3rd",
+    best_play$base_pos == 110 ~ "Runners on 2nd and 3rd",
+    best_play$base_pos == 111 ~ "Bases loaded",
+    TRUE ~ "Unknown Base State"
 )
 
 player_name <- stringr::str_replace(
@@ -97,21 +97,33 @@ player_name <- stringr::str_replace(
 )
 
 play_text <- paste0(
-    "Biggest swing of the day:\n",
-    "With ", best_play$outs_when_up, " out(s) and ", base_state_desc, ", ",
-    player_name, " delivered a ", best_play$events,
-    " that drove in ", best_play$runs, " run(s).\n",
-    "Impact: +", round(best_play$delta_xR, 2),
-    " runs above expectation."
+   # "Biggest swing of the day:\n",
+   # "With ", best_play$outs_when_up, " out(s) and ", base_state_desc, ", ",
+   # player_name, " delivered a ", best_play$events,
+   # " that drove in ", best_play$runs, " run(s).\n",
+   # "Impact: +", round(best_play$delta_xR, 2),
+   # " runs above expectation."
+   best_play$outs_when_up, 
+   if_else(best_play$outs_when_up == 1, " out | ", " out |"),
+    base_state_desc, "\n",
+    "   ", best_play$runs, "-run ", best_play$events, "\n",
+    "Impact: +", round(best_play$delta_xR, 2), " runs above expectation."
+
+
 )
 
 tweet_text <- paste0(
-    "⭐ Player of the Day (ΔxR)\n\n",
-    player_name, " generated +",
+    "⭐ Batter of the Day: ",
+    player_name, "\n\n",
     round(best_player$total_delta_xR, 2),
-    " runs above expected — the best mark in MLB on ", date, ".\n\n",
+    " runs above expected (MLB best on ",
+    format(as.Date(date), "%b %d, %Y"),
+    ").\n\n",
+    "Game Changing Moment: \n\n",
     play_text
 )
+
+cat(tweet_text)
 
 player_photo <- paste0("https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/", best_player$batter, "/headshot/67/current")
 
