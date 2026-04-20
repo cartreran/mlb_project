@@ -5,37 +5,37 @@ library(ggplot2)
 library(httr)
 library(jsonlite)
 
-
+# ---- Configuration ----
 date <- format(Sys.Date() - 1, "%Y-%m-%d")
-xR_matrix <- read_csv(file.path("data", "xR_matrix.csv"))
+xR_matrix <- read_csv(file.path("data", "xR288_matrix.csv"))
 
+# ---- Fetch and prepare Statcast data ----
 one_data <- statcast_search(
     start_date = date,
     end_date = date,
     player_type = "batter"
 ) %>%
-    select(player_name, game_pk, inning, inning_topbot, at_bat_number, pitch_number, post_bat_score, bat_score, on_3b, on_2b, on_1b, balls, strikes, outs_when_up, events) %>%
-    arrange(game_pk, inning, inning_topbot, at_bat_number, pitch_number) %>%
-    mutate(
-        runs_on_pitch = post_bat_score - bat_score,
+    select(
+        player_name, game_pk, inning, inning_topbot, at_bat_number, pitch_number,
+        post_bat_score, bat_score, on_3b, on_2b, on_1b, balls, strikes, outs_when_up, events
     ) %>%
+    arrange(game_pk, inning, inning_topbot, at_bat_number, pitch_number) %>%
+    mutate(runs_on_pitch = post_bat_score - bat_score) %>%
     group_by(game_pk, inning, inning_topbot) %>%
     mutate(
-        pitch_number_in_inning = row_number()
-    ) %>%
-    mutate(
+        pitch_number_in_inning = row_number(),
         inning_runs_scored = sum(runs_on_pitch, na.rm = TRUE),
         runs_prior = cumsum(runs_on_pitch) - runs_on_pitch,
         runs_after = inning_runs_scored - runs_prior
     ) %>%
     ungroup() %>%
     mutate(
-        base_pos = as.character((paste0(
+        base_pos = as.character(paste0(
             if_else(!is.na(on_3b), 1, 0),
             if_else(!is.na(on_2b), 1, 0),
             if_else(!is.na(on_1b), 1, 0)
-        ))),
-        count = paste0(balls, "-", strikes),
+        )),
+        count = paste0(balls, "-", strikes)
     ) %>%
     left_join(xR_matrix, by = c("base_pos", "outs_when_up", "count")) %>%
     mutate(
@@ -60,25 +60,24 @@ one_data <- statcast_search(
     ) %>%
     group_by(game_pk, inning, inning_topbot) %>%
     mutate(
-        xR_next = lead(xR),
+        xR_next = lead(xRp),
         delta_xR = if_else(
             is.na(xR_next),
-            runs_on_pitch - xR,
-            runs_on_pitch + xR_next - xR
+            runs_on_pitch - xRp,
+            runs_on_pitch + xR_next - xRp
         )
     ) %>%
     ungroup()
 
+# ---- Guard against empty data ----
 if (nrow(one_data) == 0) {
     stop("No MLB data available for date: ", date)
 }
 
+# ---- Identify best player and play ----
 best_player <- one_data %>%
     group_by(player_name) %>%
-    summarise(
-        total_delta_xR = sum(delta_xR, na.rm = TRUE)
-    ) %>%
-    ungroup() %>%
+    summarise(total_delta_xR = sum(delta_xR, na.rm = TRUE), .groups = "drop") %>%
     arrange(desc(total_delta_xR)) %>%
     slice_head(n = 1)
 
@@ -106,13 +105,19 @@ player_name <- stringr::str_replace(
     "^(.*),\\s*(.*)$", "\\2 \\1"
 )
 
-play_text <- paste0(
-   best_play$outs_when_up, 
-   if_else(best_play$outs_when_up == 1, " out | ", " out | "),
-    base_state_desc, "\n",
-    "   ", best_play$runs_on_pitch, "-run ", best_play$events, "\n",
-    "Impact: +", round(best_play$delta_xR, 2), " runs above expectation."
+# ---- Build tweet text ----
+play_result_text <- dplyr::if_else(
+    best_play$events == "Home Run" & best_play$runs_on_pitch == 4,
+    "Grand Slam",
+    paste0(best_play$runs_on_pitch, "-run ", best_play$events)
+)
 
+play_text <- paste0(
+    best_play$outs_when_up,
+    if_else(best_play$outs_when_up == 1, " out | ", " outs | "),
+    base_state_desc, "\n",
+    "   ", play_result_text, "\n",
+    "Impact: +", round(best_play$delta_xR, 2), " runs above expectation."
 )
 
 tweet_text <- paste0(
@@ -128,19 +133,47 @@ tweet_text <- paste0(
 
 cat(tweet_text)
 
-# player_photo <- paste0("https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/", best_player$batter, "/headshot/67/current")
+# ---- Compare vs cached Statcast data ----
+cache_dir <- file.path(".", "Statcast Data")
+cache_file <- file.path(cache_dir, "statcast_data.rds")
 
+add_data <- readRDS(cache_file)
+
+day_data <- one_data %>%
+    group_by(base_pos, count, outs_when_up) %>%
+    summarise(avg_delta_xR = mean(delta_xR, na.rm = TRUE), .groups = "drop")
+
+all_data_xR <- add_data %>%
+    mutate(
+        base_pos = paste0(
+            if_else(!is.na(on_3b), 1, 0),
+            if_else(!is.na(on_2b), 1, 0),
+            if_else(!is.na(on_1b), 1, 0)
+        ),
+        count = paste0(balls, "-", strikes)
+    ) %>%
+    group_by(base_pos, count, outs_when_up) %>%
+    summarise(mean_delta_xR = mean(delta_run_exp, na.rm = TRUE), .groups = "drop") %>%
+    left_join(day_data, by = c("base_pos", "count", "outs_when_up")) %>%
+    select(base_pos, count, outs_when_up, mean_delta_xR, avg_delta_xR)
+
+ttest <- t.test(all_data_xR$mean_delta_xR, all_data_xR$avg_delta_xR, paired = TRUE)
+print(ttest)
+
+# ---- Enforce tweet length ----
 tweet_text <- stringr::str_trim(tweet_text)
 if (nchar(tweet_text) > 280) {
     tweet_text <- paste0(substr(tweet_text, 1, 277), "...")
 }
 
+# ---- Validate env vars ----
 required_env <- c("apikey", "apikeysecret", "accesstoken", "accesstokensecret")
 missing_env <- required_env[nchar(Sys.getenv(required_env)) == 0]
 if (length(missing_env) > 0) {
     stop("Missing env vars: ", paste(missing_env, collapse = ", "))
 }
 
+# ---- Post tweet ----
 twitter_app <- oauth_app(
     "twitter",
     key = Sys.getenv("apikey"),
@@ -153,14 +186,9 @@ twitter_oauth <- sign_oauth1.0(
     token_secret = Sys.getenv("accesstokensecret")
 )
 
-tweet_response <- POST(
-    url = "https://api.twitter.com/2/tweets",
-    config = twitter_oauth,
-    add_headers("Content-Type" = "application/json"),
-    body = toJSON(list(text = tweet_text), auto_unbox = TRUE),
-    encode = "json"
-)
+,
 
+# ---- Error handling ----
 if (http_error(tweet_response)) {
     if (status_code(tweet_response) == 401) {
         stop(
