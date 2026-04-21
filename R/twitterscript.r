@@ -180,13 +180,13 @@ twitter_app <- oauth_app(
     secret = Sys.getenv("apikeysecret")
 )
 
-twitter_oauth <- sign_oauth1.0(
-    app = twitter_app,
-    token = Sys.getenv("accesstoken"),
-    token_secret = Sys.getenv("accesstokensecret")
+tweet_response <- POST(
+    url = "https://api.twitter.com/2/tweets",
+    config = twitter_oauth,
+    add_headers("Content-Type" = "application/json"),
+    body = toJSON(list(text = tweet_text), auto_unbox = TRUE),
+    encode = "json"
 )
-
-,
 
 # ---- Error handling ----
 if (http_error(tweet_response)) {
