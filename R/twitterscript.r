@@ -133,6 +133,33 @@ tweet_text <- paste0(
 
 cat(tweet_text)
 
+# # ---- Compare vs cached Statcast data ----
+# cache_dir <- file.path(".", "Statcast Data")
+# cache_file <- file.path(cache_dir, "statcast_data.rds")
+
+# add_data <- readRDS(cache_file)
+
+# day_data <- one_data %>%
+#     group_by(base_pos, count, outs_when_up) %>%
+#     summarise(avg_delta_xR = mean(delta_xR, na.rm = TRUE), .groups = "drop")
+
+# all_data_xR <- add_data %>%
+#     mutate(
+#         base_pos = paste0(
+#             if_else(!is.na(on_3b), 1, 0),
+#             if_else(!is.na(on_2b), 1, 0),
+#             if_else(!is.na(on_1b), 1, 0)
+#         ),
+#         count = paste0(balls, "-", strikes)
+#     ) %>%
+#     group_by(base_pos, count, outs_when_up) %>%
+#     summarise(mean_delta_xR = mean(delta_run_exp, na.rm = TRUE), .groups = "drop") %>%
+#     left_join(day_data, by = c("base_pos", "count", "outs_when_up")) %>%
+#     select(base_pos, count, outs_when_up, mean_delta_xR, avg_delta_xR)
+
+# ttest <- t.test(all_data_xR$mean_delta_xR, all_data_xR$avg_delta_xR, paired = TRUE)
+# print(ttest)
+
 # ---- Enforce tweet length ----
 tweet_text <- stringr::str_trim(tweet_text)
 if (nchar(tweet_text) > 280) {
@@ -151,6 +178,12 @@ twitter_app <- oauth_app(
     "twitter",
     key = Sys.getenv("apikey"),
     secret = Sys.getenv("apikeysecret")
+)
+
+twitter_oauth <- sign_oauth1.0(
+    app = twitter_app,
+    token = Sys.getenv("accesstoken"),
+    token_secret = Sys.getenv("accesstokensecret")
 )
 
 tweet_response <- POST(
